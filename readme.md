@@ -43,17 +43,17 @@ To implement this, we have 3 page-select fields (year, cider and blendFrom) whic
 
 1. The initial primary page select is 'Year'. Until this is selected, no other selections are possible:
 
-![No_selection](M:\laragon\www\Cider\site\modules\CustomDependSelects\images\No_selection.jpg)
+![No_selection](\images\No_selection.jpg)
 
 (Usually, I actually hide the dependent fields until the primary has been selected, but in this case you can see them and that no options are available).
 
 2. After selecting a year, cider options are available (but not 'blend from' options):
 
-![Year_selected](M:\laragon\www\Cider\site\modules\CustomDependSelects\images\Year_selected.jpg)
+![Year_selected](\images\Year_selected.jpg)
 
 3. Then, after selecting a cider, any unlinked 'blend_to' stages are available in the blendFrom field:
 
-![Cider_selected](M:\laragon\www\Cider\site\modules\CustomDependSelects\images\Cider_selected.jpg)
+![Cider_selected](\images\Cider_selected.jpg)
 
 This is achieved by using the following selectors:
 
