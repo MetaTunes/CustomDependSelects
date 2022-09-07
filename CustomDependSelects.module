@@ -1,0 +1,122 @@
+<?php
+
+namespace ProcessWire;
+
+class CustomDependSelects extends WireData implements Module {
+
+	/**
+	 * @inheritDoc
+	 */
+	public function className($options = null) {
+		return 'CustomDependSelects';
+	}
+
+	public static function getModuleinfo() {
+		return [
+			'permanent' => false,        // true if module is permanent and thus not uninstallable (3rd party modules should specify 'false')
+			'title' => 'CustomDependSelects',
+			'summary' => 'Add features to dependent selects. PW v3.0.203 recommended.',
+			'comments' => 'Use custom selectors in page field selector: check_access=role1|role2 ... to control who can see results, field=item.id to select on id of current repeater item',
+			'author' => 'Mark Evens',
+			'version' => "0.0.1",
+			'autoload' => true,
+			'singular' => true,
+			'icon' => 'upload',
+			'requires' => ['ProcessWire>=3.0.200'],
+		];
+	}
+
+	/**
+	 * Construct
+	 * Set default values for configuration settings
+	 */
+	public function __construct() {
+
+	}
+
+
+	/**
+	 * Initialize the module
+	 *
+	 * ProcessWire calls this method when the module is loaded. At this stage, all
+	 * module configuration values have been populated.
+	 *
+	 * For “autoload” modules (such as this one), this will be called before ProcessWire’s API is ready.
+	 * This is a good place to attach hooks (as is the “ready” method).
+	 *
+	 */
+	public function init() {
+
+	}
+
+	/**
+	 * Called when ProcessWire’s API is ready (optional)
+	 *
+	 * This optional method is similar to that of init() except that it is called
+	 * after the current $page has been determined and the API is fully ready to use.
+	 * Use this method instead of (or in addition to) the init() method if your
+	 * initialization requires that the `$page` API variable is available.
+	 *
+	 * @throws WireException
+	 *
+	 */
+	public function ready() {
+
+		/**
+		 * This hook permits the use of [item.id] as a selector value in a page selector (i.e. selector string specified in page field input config)
+		 * It is principally intended for use in the blendFrom field to add the test blendTo=0|[item.id] so that only blendTo items which have not been allocated to OTHER blendFroms are shown
+		 * However, it's use has not been restricted to that field - this might be slightly inefficient, but more flexible
+		 */
+		$this->wire()->addHookBefore('InputfieldPage::getSelectablePages', function($event) {
+			if($this->wire()->session->get('dbMigrate_installPages')) return;
+			$inputfield = $event->object;
+			$page = $inputfield->hasPage;
+			$selector = $inputfield->getSetting('findPagesSelector');
+			$selector = str_replace('[item.id]', $page->id, $selector);
+			$selector = $this->checkAccess($selector, 'check_access');
+			bd($selector, 'new selector from getSelectablePages before hook');
+			$inputfield->findPagesSelector($selector);
+		});
+
+
+		$this->wire()->addHookAfter('ProcessPageSearch::findReady', function(HookEvent $event) {
+			$selector = $event->return;
+			bd($selector, 'processed selector in ProcessPageSearch hook');
+			$selector = $this->checkAccess($selector, 'id!');
+			bd($selector, 'revised selector in ProcessPageSearch hook');
+			$event->return = $selector;
+		});
+
+	}
+
+	private function checkAccess($selector, $term) {
+		if(strpos($selector, "$term=") !== false) {
+			$re = "/$term=([\w|\|]*)\b/m";
+			preg_match_all($re, $selector, $matches, PREG_SET_ORDER, 0);
+			bd($selector, 'match selector');
+			bd($matches, 'matches');
+			$selTerm = $matches[0][0];
+			$selVal = $matches[0][1];
+			if($selVal != 0) {      // s/b custom check_access selector of form check_access=role|role1...]
+				$user = $this->wire()->users->getCurrentUser();
+				if($user->isSuperuser()) {
+					if($term == 'check_access') $selector = str_replace($selTerm, 'check_access=0', $selector);
+				} else {
+					$roles = explode('|', $selVal);
+					$pass = false;
+					foreach($roles as $role) {
+						if($user->hasRole($role)) {
+							$pass = true;
+							break;
+						}
+					}
+					if($pass) {
+						$selector = str_replace($selTerm, 'check_access=0', $selector);
+						if($term == 'check_access') $selector = 'id!=' . $selVal . ', ' . $selector;
+					}
+				}
+			}
+		}
+		return $selector;
+	}
+}
