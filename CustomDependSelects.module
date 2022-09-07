@@ -18,10 +18,10 @@ class CustomDependSelects extends WireData implements Module {
 			'summary' => 'Add features to dependent selects. PW v3.0.203 recommended.',
 			'comments' => 'Use custom selectors in page field selector: check_access=role1|role2 ... to control who can see results, field=item.id to select on id of current repeater item',
 			'author' => 'Mark Evens',
-			'version' => "0.0.1",
+			'version' => "0.0.2",
 			'autoload' => true,
 			'singular' => true,
-			'icon' => 'upload',
+			'icon' => 'level-down',
 			'requires' => ['ProcessWire>=3.0.200'],
 		];
 	}
@@ -74,16 +74,16 @@ class CustomDependSelects extends WireData implements Module {
 			$selector = $inputfield->getSetting('findPagesSelector');
 			$selector = str_replace('[item.id]', $page->id, $selector);
 			$selector = $this->checkAccess($selector, 'check_access');
-			bd($selector, 'new selector from getSelectablePages before hook');
+			//bd($selector, 'new selector from getSelectablePages before hook');
 			$inputfield->findPagesSelector($selector);
 		});
 
 
 		$this->wire()->addHookAfter('ProcessPageSearch::findReady', function(HookEvent $event) {
 			$selector = $event->return;
-			bd($selector, 'processed selector in ProcessPageSearch hook');
+			//bd($selector, 'processed selector in ProcessPageSearch hook');
 			$selector = $this->checkAccess($selector, 'id!');
-			bd($selector, 'revised selector in ProcessPageSearch hook');
+			//bd($selector, 'revised selector in ProcessPageSearch hook');
 			$event->return = $selector;
 		});
 
@@ -93,8 +93,8 @@ class CustomDependSelects extends WireData implements Module {
 		if(strpos($selector, "$term=") !== false) {
 			$re = "/$term=([\w|\|]*)\b/m";
 			preg_match_all($re, $selector, $matches, PREG_SET_ORDER, 0);
-			bd($selector, 'match selector');
-			bd($matches, 'matches');
+			//bd($selector, 'match selector');
+			//bd($matches, 'matches');
 			$selTerm = $matches[0][0];
 			$selVal = $matches[0][1];
 			if($selVal != 0) {      // s/b custom check_access selector of form check_access=role|role1...]
@@ -113,6 +113,8 @@ class CustomDependSelects extends WireData implements Module {
 					if($pass) {
 						$selector = str_replace($selTerm, 'check_access=0', $selector);
 						if($term == 'check_access') $selector = 'id!=' . $selVal . ', ' . $selector;
+						// Make id!= the first selector term so that it is the one caught by subsequent matching - in case there is another such term
+						// If the term is not added and there is a (regular) id!= term then it should not matter because it will have integer values, not matching roles
 					}
 				}
 			}
