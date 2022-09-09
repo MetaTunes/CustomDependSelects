@@ -99,7 +99,7 @@ class CustomDependSelects extends WireData implements Module {
 			$page = $event->arguments[0];
 			$pageField = $event->arguments[1];
 			$selector = $pageField->get('findPagesSelector');
-			bd($selector, 'selector');
+			//bd($selector, 'selector');
 			$selector = str_replace('[item.id]', $page->id, $selector);
 			$event->arguments[1]->set('findPagesSelector', $this->checkAccess($selector, 'check_access'));
 		});
