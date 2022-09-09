@@ -18,7 +18,7 @@ class CustomDependSelects extends WireData implements Module {
 			'summary' => 'Add features to dependent selects. PW v3.0.203 recommended.',
 			'comments' => 'Use custom selectors in page field selector: check_access=role1|role2 ... to control who can see results, field=item.id to select on id of current repeater item',
 			'author' => 'Mark Evens',
-			'version' => "0.0.2",
+			'version' => "0.0.3",
 			'autoload' => true,
 			'singular' => true,
 			'icon' => 'level-down',
@@ -79,12 +79,29 @@ class CustomDependSelects extends WireData implements Module {
 		});
 
 
+		/**
+		 *  ProcessPageSearch deletes the check_access=0 if user is not superuser.  'id!=' is used to carry the term and needs to be replaced
+		 * (see notes in checkAccess() below)
+		 */
 		$this->wire()->addHookAfter('ProcessPageSearch::findReady', function(HookEvent $event) {
 			$selector = $event->return;
 			//bd($selector, 'processed selector in ProcessPageSearch hook');
 			$selector = $this->checkAccess($selector, 'id!');
 			//bd($selector, 'revised selector in ProcessPageSearch hook');
 			$event->return = $selector;
+		});
+
+		/**
+		 * We also need to fix the selector when the page field is saved, otherwise PW will throw errors
+		 */
+		$this->wire()->addHookBefore('Fieldtype::savePageField', function($event) {
+			//bd($event->arguments, 'args for savePageFieldHook');
+			$page = $event->arguments[0];
+			$pageField = $event->arguments[1];
+			$selector = $pageField->get('findPagesSelector');
+			bd($selector, 'selector');
+			$selector = str_replace('[item.id]', $page->id, $selector);
+			$event->arguments[1]->set('findPagesSelector', $this->checkAccess($selector, 'check_access'));
 		});
 
 	}
